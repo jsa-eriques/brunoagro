@@ -1,0 +1,60 @@
+name: Deploy
+run-name: deploy
+on: [push]
+
+jobs:
+  deploy:
+    runs-on: linux-amd64_node
+    steps:
+      - name: Setup deploy key
+        env:
+          SSH_AUTH_SOCK: /tmp/ssh_agent-${{ gitea.run_id }}.sock
+        run: |
+          pkill -9 -f $SSH_AUTH_SOCK || true
+          ssh-agent -a $SSH_AUTH_SOCK > /dev/null
+          ssh-add - <<< "${{ secrets.DEPLOY_KEY }}"          
+      - name: Check out repository code
+        uses: actions/checkout@v3
+      - name: Restore node_modules
+        uses: actions/cache@v3
+        with:
+          key: ${{ runner.os }}-megazap-ads-node-modules
+          path: |
+            **/node_modules            
+      - name: Build the app /
+        run: |
+          rm package-lock.json
+          npm i && npm run build          
+      - name: Upload files
+        env:
+          SSH_AUTH_SOCK: /tmp/ssh_agent-${{ gitea.run_id }}.sock
+        run: scp -o StrictHostKeyChecking=no -r build/* root@megazap.com:/usr/share/caddy
+      - name: Build the app /ads
+        run: |
+          rm package-lock.json
+          npm i && npm run build          
+      - name: Upload files
+        env:
+          SSH_AUTH_SOCK: /tmp/ssh_agent-${{ gitea.run_id }}.sock
+        run: scp -o StrictHostKeyChecking=no -r build/* root@megazap.com:/usr/share/caddy
+      - name: Build the app /ads-a
+        run: |
+          npm run build:a          
+      - name: Upload files
+        env:
+          SSH_AUTH_SOCK: /tmp/ssh_agent-${{ gitea.run_id }}.sock
+        run: scp -o StrictHostKeyChecking=no -r build/* root@megazap.com:/usr/share/caddy/ads-a
+      - name: Build the app /ads-b
+        run: |
+          npm run build:b          
+      - name: Upload files
+        env:
+          SSH_AUTH_SOCK: /tmp/ssh_agent-${{ gitea.run_id }}.sock
+        run: scp -o StrictHostKeyChecking=no -r build/* root@megazap.com:/usr/share/caddy/ads-b
+      - name: Build the app /ads-c
+        run: |
+          npm run build:c          
+      - name: Upload files
+        env:
+          SSH_AUTH_SOCK: /tmp/ssh_agent-${{ gitea.run_id }}.sock
+        run: scp -o StrictHostKeyChecking=no -r build/* root@megazap.com:/usr/share/caddy/ads-c
